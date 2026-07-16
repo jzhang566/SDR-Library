@@ -4,23 +4,30 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef int16_t dsp_Q15;
-typedef int32_t dsp_Q31;
+typedef int16_t q15_t;
 
-static inline dsp_Q15 double_to_Q15(double x) 
+typedef struct complex16_t {
+    q15_t re;
+    q15_t im;
+};
 
-static inline dsp_Q31 double_to_Q31(double x) 
+typedef uint16_t phase_t;
+typedef int16_t angle_t;
 
-static inline dsp_Q15 float_to_Q15(float x) 
+typedef struct sin_cos_t {
+    q15_t sin;
+    q15_t cos;
+}
 
-static inline dsp_Q31 float_to_Q31(float x) 
+#define Q15_MAX ((q15_t)(0x7FFF)
+#define Q15_MIN ((q15_t)(0x8000)
+
+inline q15_t double_to_q15(double x); 
+
+inline q15_t float_to_q15(float x); 
     
-static inline double Q15_to_double(Q15 x)
+inline double q15_to_double(q15_t x);
 
-static inline double Q31_to_double(Q31 x)
-
-static inline float Q15_to_double(Q15 x)
-
-static inline float Q31_to_double(Q31 x)
+inline float q15_to_double(q15_t x);
 
 #endif
