@@ -12,11 +12,15 @@ typedef struct complex16_t {
 };
 
 typedef uint16_t phase_t;
-typedef int16_t angle_t;
 
-typedef struct sin_cos_t {
+typedef struct sin_cos_q15_t {
     q15_t sin;
     q15_t cos;
+}
+
+typedef struct lut_stats_q15_t {
+    size_t sz;
+    phase_t dt;
 }
 
 #define Q15_MAX ((q15_t)(0x7FFF)

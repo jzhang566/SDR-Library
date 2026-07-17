@@ -58,7 +58,9 @@ static const phase_t cordic_atan_table [16] = {
     0x0003, 0x0001, 0x0001, 0x0000
 }
 
-inline sin_cos_t sin_cos_cordic_q15 (phase_t phase, size_t precision) {
+static int cordic_precision = 16;
+
+inline sin_cos_t sin_cos_cordic_q15 (phase_t phase) {
     q15_t x = 0x4DBA;
     q15_t y = 0;
     q15_t xn, yn;
@@ -69,7 +71,7 @@ inline sin_cos_t sin_cos_cordic_q15 (phase_t phase, size_t precision) {
             xn = sub_q15(x, y >> i);
             yn = add_q15(x >> i, y);
             angle = angle - cordic_atan_table[i];
-        } else if (angle < 0) {
+        } else {
             xn = add_q15(x, y >> i);
             yn = sub_q15(y, x >> i);
             angle = angle + cordic_atan_table[i];
@@ -90,4 +92,15 @@ inline q15_t atan_cordic_q15 (phase_t phase, size_t precision) {
     
 }
 
+inline void generate_sin_cos_lut (q15_t *ptr, lut_stats_q15_t *stats) {
+    stats.dt = 0xFFFFu / stats.sz;
+    for (size_t i = 0; i < 0x4000; i += dt) {
+        ptr[i] = sin_cos_cordic_q15(i).cos;
+    }
+}
 
+inline sin_cos_t find_sin_cos_lut (q15_t *ptr, lut_stats_q15_t *stats, phase_t angle) {
+    size_t ind = angle / stats.dt;
+    q15_t dx = (q15_t) (((int32_t)(angle % stats.dt) << 16) / stats.dt);
+    q15_t ans = add_q15(ptr[ind], mul_q15(dx, sub_q15(ptr[ind+1] - ptr[ind])));
+}
