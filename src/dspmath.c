@@ -36,15 +36,17 @@ inline complex16_t sub_c16 (complex16_t a, complex16_t b) {
 }
 
 inline complex16_t conj_c16 (complex16_t a) {
-    return complex16_t {a.re, 0 - b.im};
+    return complex16_t {a.re, 0 - a.im};
 }
 
 inline complex16_t mul_c16 (complex16_t a, complex16_t b) {
-    return complex16_t {q15_mul(a.re, b.re) - q15_mul(a.im, b.im), q15_mul(a.re, b.im) + q15_mul(a.im, b.re)};
+    return complex16_t {add_q15(
+        sub_q15(mul_q15(a.re, b.re), mul_q15(a.im, b.im)), 
+        add_q15(mul_q15(a.re, b.im), mul_q15(a.im, b.re))};
 }
 
 inline q15_t magsq_c16 (complex16_t a, complex16_t b) {
-    return q15_t {q15_mul(a.re, b.re) + q15_mul(a.im + b.im)};
+    return q15_t {add_q15(mul_q15(a.re, b.re), mul_q15(a.im + b.im))};
 }
 
 inline phase_t phase_c16 (complex16_t a, complex16_t b) {
@@ -80,27 +82,68 @@ inline sin_cos_t sin_cos_cordic_q15 (phase_t phase) {
     }
     sin_cos_t ans = {0, 0};
     switch (quadrant) {
-        case 0: ans.sin = y; ans.cos = x; break;
-        case 1: ans.sin = x; ans.cos = -y; break;
-        case 2: ans.sin = -y; ans.cos = x; break;
-        case 3: ans.sin = -x; ans.cos = y; break;
+        case 0: return sin_cos_t {y, x};
+        case 1: return sin_cos_t {x, -y};
+        case 2: return sin_cos_t {-y, x};
+        case 3: return sin_cos_t {-x, y};
     }
-    return ans;
 }
 
-inline q15_t atan_cordic_q15 (phase_t phase, size_t precision) {
+inline q15_t atan_cordic_q15 (phase_t phase) {
     
 }
 
-inline void generate_sin_cos_lut (q15_t *ptr, lut_stats_q15_t *stats) {
-    stats.dt = 0xFFFFu / stats.sz;
-    for (size_t i = 0; i < 0x4000; i += dt) {
-        ptr[i] = sin_cos_cordic_q15(i).cos;
+typedef struct sinusoid_lut_q15_t {
+    q15_t *lut;
+    uint16_t sz;
+    uint16_t frac_bits;
+    uint8_t bits;
+    
+    
+} sinusoid_lut_q15_t;
+static sinusoid_lut_q15_t cos_lut_q15_g;
+// ptr is a user-allocated buffer of size (sz * sizeof(q15_t))
+// Size must be a power of 2, greater than 4. This allows for quick generation and lookup without division.
+// Only one sin-cos LUT can be created at a time. 
+inline bool generate_sinusoid_lut_q15 (q15_t *ptr, size_t sz) {
+    if (sz < 8 || (sz & (sz - 1)) != 0) return 1;
+    for (size_t i = 0; i < sz; i++) {
+        if ((sz >> i) & 0x1) {
+            cos_lut_q15_g.bits = i;
+            break;
+        }
     }
+    cos_lut_q15_g.sz = sz;
+    cos_lut_q15_g.lut = ptr;
+    cos_lut_q15_g.frac_bits = 14 - cos_lut_q15_g.bits;
+    size_t ind = 0;
+    for (size_t i = 0; i < 0x4000; i += 1u << cos_lut_q15_g.frac_bits) {
+        ptr[ind] = sin_cos_cordic_q15(i).cos;
+        ind = ind + 1;
+    }
+    return 0;
 }
 
-inline sin_cos_t find_sin_cos_lut (q15_t *ptr, lut_stats_q15_t *stats, phase_t angle) {
-    size_t ind = angle / stats.dt;
-    q15_t dx = (q15_t) (((int32_t)(angle % stats.dt) << 16) / stats.dt);
-    q15_t ans = add_q15(ptr[ind], mul_q15(dx, sub_q15(ptr[ind+1] - ptr[ind])));
+inline q15_t cos_lut_q15_g (phase_t angle) {
+    uint8_t quadrant = (angle >> 14) & 0x3u;
+    uint16_t r = angle & 0x3FFFu;
+    bool neg = 0;
+    switch (quadrant) {
+        case 0: break;
+        case 1: neg = 1; r = (0x4000u - r); break;
+        case 2: neg = 1; break;
+        case 3: r = (0x4000u - r); break;
+    }
+    uint16_t ind = r >> cos_lut_q15_g.frac_bits;
+    uint16_t frac = r & ((1u << (cos_lut_q15_g.frac_bits)) - 1);
+    q15_t frac_q15 = (uint32_t)(frac << (15 - cos_lut_q15_g.frac_bits));
+    q15_t y0 = cos_lut_q15_g.lut[ind];
+    q15_t y1 = (ind == cos_lut_q15_g.sz - 1) ? 0 : cos_lut_q15_g.lut[ind + 1];
+    q15_t diff = sub_q15(y1, y0);
+    q15_t interp = mul_q15(diff, frac_q15);
+    return neg ? -1 * add_q15(y0, interp) : add_q15(y0, interp);
+}
+
+inline q15_t sin_lut_q15 (phase_t angle) {
+    return cos_lut_q15_g((0x4000u - phase));
 }
