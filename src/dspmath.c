@@ -49,8 +49,8 @@ inline q15_t magsq_c16 (complex16_t a, complex16_t b) {
     return q15_t {add_q15(mul_q15(a.re, b.re), mul_q15(a.im + b.im))};
 }
 
-inline phase_t phase_c16 (complex16_t a, complex16_t b) {
-        
+inline phase_t phase_c16 (complex16_t a) {
+    return atan_cordic_q15(a);
 }
 
 static const phase_t cordic_atan_table [16] = {
@@ -68,10 +68,10 @@ inline sin_cos_t sin_cos_cordic_q15 (phase_t phase) {
     q15_t xn, yn;
     uint8_t quadrant = (phase >> 14) & 0x3u;
     int16_t angle = phase & 0x3FFFu;
-    for (size_t i = 0; i < precision; i++) {
+    for (size_t i = 0; i < cordic_precision; i++) {
         if (angle >= 0) {
             xn = sub_q15(x, y >> i);
-            yn = add_q15(x >> i, y);
+            yn = add_q15(y, x >> i);
             angle = angle - cordic_atan_table[i];
         } else {
             xn = add_q15(x, y >> i);
@@ -89,8 +89,30 @@ inline sin_cos_t sin_cos_cordic_q15 (phase_t phase) {
     }
 }
 
-inline q15_t atan_cordic_q15 (phase_t phase) {
-    
+inline phase_t atan_cordic_q15 (complex16_t v) {
+    q15_t x = v.re;
+    q15_t y = v.im;
+    phase_t angle = 0;
+    if (x < 0) {
+        x = sub_q15(0, x);
+        y = sub_q15(0, y);
+        angle = 0x8000;
+    }
+    q15_t xn, yn;
+    for (size_t i = 0; i < cordic_precision; i++) {
+        if (y >= 0) {
+            xn = add_q15(x, y >> i);
+            yn = sub_q15(y, x >> i);
+            angle = angle + cordic_atan_table[i];
+        } else {
+            xn = sub_q15(x, y >> i);
+            yn = add_q15(y, x >> i);
+            angle = angle - cordic_atan_table[i];
+        }
+        x = xn;
+        y = yn;
+    }
+    return angle; 
 }
 
 typedef struct sinusoid_lut_q15_t {
@@ -124,7 +146,7 @@ inline bool generate_sinusoid_lut_q15 (q15_t *ptr, size_t sz) {
     return 0;
 }
 
-inline q15_t cos_lut_q15_g (phase_t angle) {
+inline q15_t cos_lut_q15 (phase_t angle) {
     uint8_t quadrant = (angle >> 14) & 0x3u;
     uint16_t r = angle & 0x3FFFu;
     bool neg = 0;
@@ -145,5 +167,25 @@ inline q15_t cos_lut_q15_g (phase_t angle) {
 }
 
 inline q15_t sin_lut_q15 (phase_t angle) {
-    return cos_lut_q15_g((0x4000u - phase));
+    return cos_lut_q15((0x4000u - phase));
+}
+
+inline q15_t cos_lut_q15_nointerp (phase_t angle) {
+    uint8_t quadrant = (angle >> 14) & 0x3u;
+    uint16_t r = angle & 0x3FFFu;
+    bool neg = 0;
+    switch (quadrant) {
+        case 0: break;
+        case 1: neg = 1; r = (0x4000u - r); break;
+        case 2: neg = 1; break;
+        case 3: r = (0x4000u - r); break;
+    }
+
+    }
+    uint16_t ind = (r + (1 << (cos_lut_q15_g.frac_bits - 1))) >> cos_lut_q15_g.frac_bits;
+    return neg ? -1 * cos_lut_q15_g.lut[ind] : cos_lut_q15_g.lut[ind];
+}
+
+inline q15_t sin_lut_q15_nointerp (phase_t angle) {
+    return cos_lut_q15_nointerp (angle);
 }
