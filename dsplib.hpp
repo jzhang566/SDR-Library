@@ -5,5 +5,6 @@
 #include "dspmath.hpp"
 #include "filters.hpp"
 #include "fft.hpp"
+#include "windows.hpp"
 
 #endif // DSPLIB_HPP
