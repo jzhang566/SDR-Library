@@ -151,4 +151,65 @@ Q15 sin_lut_q15_nointerp(phase_t angle) {
     return cos_lut_q15_nointerp(angle);
 }
 
+void pointwise_add(const Complex16* a, const Complex16* b, Complex16* out, size_t n) {
+    for (size_t i = 0; i < n; ++i) out[i] = a[i] + b[i];
+}
+
+void pointwise_sub(const Complex16* a, const Complex16* b, Complex16* out, size_t n) {
+    for (size_t i = 0; i < n; ++i) out[i] = a[i] - b[i];
+}
+
+void pointwise_mul(const Complex16* a, const Complex16* b, Complex16* out, size_t n) {
+    for (size_t i = 0; i < n; ++i) out[i] = a[i] * b[i];
+}
+
+void pointwise_mul(const Complex16* a, const Q15* b, Complex16* out, size_t n) {
+    for (size_t i = 0; i < n; ++i) out[i] = a[i] * b[i];
+}
+
+void scale(const Complex16* a, Q15 factor, Complex16* out, size_t n) {
+    for (size_t i = 0; i < n; ++i) out[i] = a[i] * factor;
+}
+
+void magsq(const Complex16* a, Q15* out, size_t n) {
+    for (size_t i = 0; i < n; ++i) out[i] = a[i].magsq();
+}
+
+namespace {
+
+// Sums a[i] * conj(b[i]) in 64-bit fixed point (each raw product is Q1.30;
+// the accumulator holds their unsaturated sum) and rounds/saturates once to
+// Q15 at the end, instead of saturating after every term.
+Complex16 dot_wide(const Complex16* a, const Complex16* b, size_t n) {
+    int64_t re_acc = 0;
+    int64_t im_acc = 0;
+    for (size_t i = 0; i < n; ++i) {
+        int64_t ar = a[i].re.raw();
+        int64_t ai = a[i].im.raw();
+        int64_t br = b[i].re.raw();
+        int64_t bi = b[i].im.raw();
+        re_acc += ar * br + ai * bi;
+        im_acc += ai * br - ar * bi;
+    }
+    auto to_q15 = [](int64_t acc) -> Q15 {
+        int64_t rounded = (acc + (1LL << 14)) >> 15;
+        if (rounded > Q15::MAX) rounded = Q15::MAX;
+        if (rounded < Q15::MIN) rounded = Q15::MIN;
+        return Q15(static_cast<int16_t>(rounded));
+    };
+    return Complex16(to_q15(re_acc), to_q15(im_acc));
+}
+
+} // namespace
+
+Complex16 dot(const Complex16* a, const Complex16* b, size_t n) {
+    return dot_wide(a, b, n);
+}
+
+Q15 energy(const Complex16* a, size_t n) {
+    // dot(a, a)'s imaginary part is exactly 0 (ai*ar - ar*ai), so this is
+    // just sum_i |a[i]|^2.
+    return dot_wide(a, a, n).re;
+}
+
 } // namespace dsp

@@ -68,6 +68,7 @@ public:
     }
     Complex16 operator*(Q15 scalar) const { return {re * scalar, im * scalar}; }
     Complex16 operator-() const { return {-re, -im}; }
+    Complex16 operator>>(int shift) const { return {re >> shift, im >> shift}; }
 
     Complex16& operator+=(const Complex16& rhs) { return *this = *this + rhs; }
     Complex16& operator-=(const Complex16& rhs) { return *this = *this - rhs; }

@@ -1,11 +1,48 @@
 #include "../fft.hpp"
+#include "../dspmath.hpp"
 
 #include <cassert>
+#include <vector>
 
 namespace dsp {
 
-void fft(uint8_t /*config*/, const Complex16* /*data*/, size_t /*N*/, Complex16* /*out*/, bool /*scale*/) {
-    assert(false && "fft: not yet implemented");
+void fft(Complex16* x, size_t N, Complex16* X, char scale_mode, bool inv) {
+    assert(N > 0 && N <= 0x10000 && (N & (N - 1)) == 0 && "fft: N must be a power of two, <= 0x10000");
+    assert((scale_mode == 's' || scale_mode == 'u') && "fft: unknown scale_mode");
+    assert(scale_mode != 'u' && "fft: scale_mode 'u' (unscaled) not yet implemented");
+
+    if (N == 1) {
+        X[0] = x[0];
+        return;
+    }
+
+    size_t N_half = N >> 1;
+    std::vector<Complex16> even(N_half), odd(N_half);
+    for (size_t i = 0; i < N_half; ++i) {
+        even[i] = x[2 * i];
+        odd[i] = x[2 * i + 1];
+    }
+
+    std::vector<Complex16> E(N_half), O(N_half);
+    fft(even.data(), N_half, E.data(), scale_mode, inv);
+    fft(odd.data(), N_half, O.data(), scale_mode, inv);
+
+    uint16_t step = static_cast<uint16_t>(0x10000u / N);
+    for (size_t k = 0; k < N_half; ++k) {
+        uint32_t idx = static_cast<uint32_t>(k) * step;
+        phase_t phase = inv ? static_cast<phase_t>(idx) : static_cast<phase_t>(-idx);
+        Complex16 w = sin_cos_cordic_q15(phase);
+        Complex16 t = O[k] * w;
+
+        Complex16 sum = E[k] + t;
+        Complex16 diff = E[k] - t;
+        if (scale_mode == 's') {
+            sum = sum >> 1;
+            diff = diff >> 1;
+        }
+        X[k] = sum;
+        X[k + N_half] = diff;
+    }
 }
 
 } // namespace dsp

@@ -40,6 +40,40 @@ Q15 cos_lut_q15_nointerp(phase_t angle);
 /* Sine via LUT, nearest-neighbour (no interpolation). */
 Q15 sin_lut_q15_nointerp(phase_t angle);
 
+/* ===== Buffer / vector operations =====
+ *
+ * All take element count n and operate on out[i] = f(a[i], b[i]) for
+ * i in [0, n). out may alias a and/or b.
+ */
+
+/* out[i] = a[i] + b[i] */
+void pointwise_add(const Complex16* a, const Complex16* b, Complex16* out, size_t n);
+
+/* out[i] = a[i] - b[i] */
+void pointwise_sub(const Complex16* a, const Complex16* b, Complex16* out, size_t n);
+
+/* out[i] = a[i] * b[i] */
+void pointwise_mul(const Complex16* a, const Complex16* b, Complex16* out, size_t n);
+
+/* out[i] = a[i] * b[i], b real-valued (e.g. applying a window function). */
+void pointwise_mul(const Complex16* a, const Q15* b, Complex16* out, size_t n);
+
+/* out[i] = a[i] * factor (e.g. gain/normalization). */
+void scale(const Complex16* a, Q15 factor, Complex16* out, size_t n);
+
+/* out[i] = |a[i]|^2 */
+void magsq(const Complex16* a, Q15* out, size_t n);
+
+/* Complex (Hermitian) inner product: sum_i a[i] * conj(b[i]).
+ * Accumulates internally in 64-bit fixed point so it doesn't saturate
+ * per-term on long vectors; the final sum is saturated to Q15 once. */
+Complex16 dot(const Complex16* a, const Complex16* b, size_t n);
+
+/* Signal energy: sum_i |a[i]|^2, equivalent to dot(a, a).re but computed
+ * directly. Same wide accumulation as dot(); still saturates to Q15 on
+ * return, so it's most useful over short buffers or pre-scaled inputs. */
+Q15 energy(const Complex16* a, size_t n);
+
 } // namespace dsp
 
 #endif // DSP_MATH_HPP

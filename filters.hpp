@@ -16,6 +16,16 @@ void fir_filter(const Complex16* x, const Complex16* h, Complex16* y, size_t sz,
  * be initialized by the caller. */
 void biquad_filter(const Complex16* x, Q15 b0, Q15 b1, Q15 b2, Q15 a1, Q15 a2, Complex16* y, size_t sz);
 
+/* Downsample by M: y[i] = x[M*i], for i in [0, sz/M). y must hold sz/M
+ * elements. No anti-alias filtering is applied; filter first if needed. */
+void decimate(const Complex16* x, Complex16* y, size_t M, size_t sz);
+
+/* Upsample by M via zero-stuffing: for each input sample, M-1 zeros
+ * followed by the sample itself. x has sz elements, y must hold sz*M.
+ * No interpolation filtering (image rejection) is applied; filter the
+ * result if needed. */
+void interpolate(const Complex16* x, Complex16* y, size_t M, size_t sz);
+
 } // namespace dsp
 
 #endif // FILTERS_HPP

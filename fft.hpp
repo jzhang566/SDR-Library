@@ -5,9 +5,21 @@
 
 namespace dsp {
 
-/* Not yet implemented. config/scale semantics (radix, in-place vs.
- * out-of-place, forward/inverse) are still undecided; calling this aborts. */
-void fft(uint8_t config, const Complex16* data, size_t N, Complex16* out, bool scale);
+/* Radix-2 Cooley-Tukey FFT (decimation in time). N must be a power of two,
+ * and at most 0x10000 (the phase resolution of the CORDIC twiddle factors).
+ * x and X each hold N elements; they may safely alias the same buffer for
+ * an in-place transform (x is fully consumed before X is written).
+ *
+ * inv:  false = forward transform (twiddle e^{-j2*pi*k/N}),
+ *       true  = inverse transform (twiddle e^{+j2*pi*k/N}).
+ *
+ * scale_mode:
+ *   's' = scale every stage's output by 1/2, for an overall 1/N scale on
+ *         the result. Keeps intermediate values within Q15 range
+ *         regardless of input amplitude or direction. (default)
+ *   'u' = unscaled, full-precision output. Not yet implemented.
+ */
+void fft(Complex16* x, size_t N, Complex16* X, char scale_mode = 's', bool inv = false);
 
 } // namespace dsp
 

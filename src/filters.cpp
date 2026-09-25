@@ -19,4 +19,25 @@ void biquad_filter(const Complex16* x, Q15 b0, Q15 b1, Q15 b2, Q15 a1, Q15 a2, C
     }
 }
 
+void decimate (const Complex16* x, Complex16* y, size_t M, size_t sz) {
+    for (size_t i = 0; i < sz/M; i++) {
+        y[i] = x[M * i]; 
+    }
+}
+
+void interpolate (const Complex16* x, Complex16* y, size_t M, size_t sz) {
+    size_t cnt = 0;
+    size_t xi = 0;
+    for (size_t i = 0; i < sz * M; i++) {
+        if (cnt == M - 1) {
+            y[i] = x[xi];
+            ++xi;
+            cnt = 0;
+        } else {
+            y[i] = Complex16(Q15(0), Q15(0));
+            ++cnt;
+        }
+    }
+}
+
 } // namespace dsp
