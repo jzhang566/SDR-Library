@@ -46,12 +46,21 @@ unsigned log2_exact(unsigned v) {
     return r;
 }
 
-// Spacing between adjacent PAM levels' raw Q15 values, such that levels
-// {-(L-1),...,-1,+1,...,+(L-1)} * step stay within Q15 range. L is a level
-// *count* here, not a Q15 fraction, so this is plain integer division, not
-// Q15::operator/.
+// Spacing between adjacent PAM levels' raw Q15 values. Bounds the corner
+// points' VECTOR magnitude (not just their per-axis amplitude) to kUnity:
+// corners sit at (+-(L-1)*step, +-(L-1)*step), vector magnitude
+// sqrt(2)*(L-1)*step. Per-axis-only bounding would let a corner point's
+// vector magnitude reach ~1.414x Q15 range, which is fine for static
+// transmission but saturates the moment anything multiplies the symbol by
+// a unit-magnitude rotator (e.g. Costas derotation can rotate that full
+// vector magnitude onto a single axis). Uses 0.7 as a deliberately
+// conservative approximation of 1/sqrt(2) (~0.7071) to keep this a simple,
+// easily-verified-safe integer computation, at the cost of ~1% of the
+// available dynamic range. L is a level *count* here, not a Q15 fraction,
+// so this is plain integer arithmetic, not Q15::operator*.
 int32_t axis_step(unsigned L) {
-    return kUnity.raw() / static_cast<int32_t>(L - 1);
+    int32_t per_axis = kUnity.raw() / static_cast<int32_t>(L - 1);
+    return (per_axis * 7) / 10;
 }
 
 // index in [0, L) -> signed PAM amplitude, as a raw Q15 value.
