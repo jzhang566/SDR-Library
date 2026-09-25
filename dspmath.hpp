@@ -60,6 +60,14 @@ SinCosMode sin_cos_mode();
  * whichever implementation set_sin_cos_mode() selected. */
 Complex16 sin_cos_q15(phase_t phase);
 
+/* ===== Square root =====
+ *
+ * Square root of a non-negative Q15 value (e.g. |z| = sqrt_q15(z.magsq())).
+ * A pure fixed-point integer square root, not a double round-trip, since
+ * this is plausibly a per-sample operation (e.g. AM envelope detection).
+ */
+Q15 sqrt_q15(Q15 x);
+
 /* ===== Buffer / vector operations =====
  *
  * All take element count n and operate on out[i] = f(a[i], b[i]) for

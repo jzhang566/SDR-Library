@@ -175,6 +175,37 @@ Complex16 sin_cos_q15(phase_t phase) {
     }
 }
 
+namespace {
+
+// Integer sqrt via the classic digit-by-digit (binary search) method.
+uint32_t isqrt32(uint32_t n) {
+    uint32_t res = 0;
+    uint32_t bit = 1u << 30; // highest power of 4 <= UINT32_MAX
+    while (bit > n) bit >>= 2;
+    while (bit != 0) {
+        uint32_t trial = res + bit;
+        if (n >= trial) {
+            n -= trial;
+            res = (res >> 1) + bit;
+        } else {
+            res >>= 1;
+        }
+        bit >>= 2;
+    }
+    return res;
+}
+
+} // namespace
+
+Q15 sqrt_q15(Q15 x) {
+    assert(x.raw() >= 0 && "sqrt_q15: x must be non-negative");
+    // sqrt(v) * 32768 == isqrt(raw * 32768) for v = raw/32768, raw >= 0.
+    uint32_t v = static_cast<uint32_t>(x.raw()) << 15;
+    uint32_t r = isqrt32(v);
+    if (r > static_cast<uint32_t>(Q15::MAX)) r = Q15::MAX;
+    return Q15(static_cast<int16_t>(r));
+}
+
 void pointwise_add(const Complex16* a, const Complex16* b, Complex16* out, size_t n) {
     for (size_t i = 0; i < n; ++i) out[i] = a[i] + b[i];
 }
