@@ -1,5 +1,7 @@
 #include "../dspmath.hpp"
 
+#include <cassert>
+
 namespace dsp {
 
 namespace {
@@ -21,6 +23,8 @@ struct SinusoidLutState {
 };
 
 SinusoidLutState g_lut;
+
+SinCosMode g_sin_cos_mode = SinCosMode::Cordic;
 
 } // namespace
 
@@ -149,6 +153,26 @@ Q15 cos_lut_q15_nointerp(phase_t angle) {
 
 Q15 sin_lut_q15_nointerp(phase_t angle) {
     return cos_lut_q15_nointerp(angle);
+}
+
+void set_sin_cos_mode(SinCosMode mode) {
+    g_sin_cos_mode = mode;
+}
+
+SinCosMode sin_cos_mode() {
+    return g_sin_cos_mode;
+}
+
+Complex16 sin_cos_q15(phase_t phase) {
+    switch (g_sin_cos_mode) {
+        case SinCosMode::Lut:
+            assert(g_lut.lut != nullptr &&
+                   "sin_cos_q15: Lut mode selected but no LUT generated (call generate_sinusoid_lut_q15 first)");
+            return Complex16(cos_lut_q15(phase), sin_lut_q15(phase));
+        case SinCosMode::Cordic:
+        default:
+            return sin_cos_cordic_q15(phase);
+    }
 }
 
 void pointwise_add(const Complex16* a, const Complex16* b, Complex16* out, size_t n) {

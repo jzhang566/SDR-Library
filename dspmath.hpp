@@ -40,6 +40,26 @@ Q15 cos_lut_q15_nointerp(phase_t angle);
 /* Sine via LUT, nearest-neighbour (no interpolation). */
 Q15 sin_lut_q15_nointerp(phase_t angle);
 
+/* ===== Sin/cos implementation switch =====
+ *
+ * sin_cos_q15() is what the rest of the library (e.g. fft()) calls
+ * internally for sin/cos, so switching the mode here changes their
+ * behavior too, not just direct callers.
+ */
+enum class SinCosMode {
+    Cordic,  // No setup needed. ~16 CORDIC iterations per call.
+    Lut,     // O(1) per call, but generate_sinusoid_lut_q15() must have
+             // been called first; accuracy is bounded by the table size.
+};
+
+/* Selects the implementation sin_cos_q15() uses. Defaults to Cordic. */
+void set_sin_cos_mode(SinCosMode mode);
+SinCosMode sin_cos_mode();
+
+/* Sine/cosine of a phase as the unit phasor (re = cos, im = sin), via
+ * whichever implementation set_sin_cos_mode() selected. */
+Complex16 sin_cos_q15(phase_t phase);
+
 /* ===== Buffer / vector operations =====
  *
  * All take element count n and operate on out[i] = f(a[i], b[i]) for

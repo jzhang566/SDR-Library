@@ -13,6 +13,10 @@ namespace dsp {
  * inv:  false = forward transform (twiddle e^{-j2*pi*k/N}),
  *       true  = inverse transform (twiddle e^{+j2*pi*k/N}).
  *
+ * Twiddle factors are computed once per call via sin_cos_q15() (see
+ * dspmath.hpp for set_sin_cos_mode() to pick CORDIC vs. LUT) and reused
+ * across every recursion level, not recomputed per stage.
+ *
  * scale_mode:
  *   's' = scale every stage's output by 1/2, for an overall 1/N scale on
  *         the result. Keeps intermediate values within Q15 range
